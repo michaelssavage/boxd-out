@@ -1,0 +1,11 @@
+[build]
+  command = "go build -o functions/scraper"
+  functions = "functions"
+
+[functions]
+  external_node_modules = ["mongodb"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
