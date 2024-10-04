@@ -1,1 +1,4 @@
 .env
+*.exe
+# Local Netlify folder
+.netlify

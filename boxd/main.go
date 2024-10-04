@@ -19,10 +19,10 @@ import (
 )
 
 type Movie struct {
-	Title    string    `json:"title"`
-	Year     string    `json:"year"`
-	ImageURL string    `json:"imageUrl"`
-	MovieURL string    `json:"movieUrl"`
+	Title     string    `json:"title"`
+	Year      string    `json:"year"`
+	ImageURL  string    `json:"imageUrl"`
+	MovieURL  string    `json:"movieUrl"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
@@ -34,10 +34,9 @@ type FavoriteMovies struct {
 
 // Configuration struct to hold runtime settings
 type Config struct {
-	Local        bool
-	Username     string
-	MongoDBURI   string
-	OutputFormat string // "json" or "text"
+	Local      bool
+	Username   string
+	MongoDBURI string
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
@@ -51,7 +50,6 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (*event
 }
 
 func handleRequest(ctx context.Context, config Config) (*events.APIGatewayProxyResponse, error) {
-	// Scrape Letterboxd favorites
 	movies, err := scrapeFavorites(config.Username)
 	if err != nil {
 		return &events.APIGatewayProxyResponse{
@@ -61,11 +59,19 @@ func handleRequest(ctx context.Context, config Config) (*events.APIGatewayProxyR
 	}
 
 	if config.Local {
-		// For local execution, print results based on output format
-		return handleLocalOutput(movies, config.OutputFormat)
+		jsonData, err := json.MarshalIndent(movies, "", "  ")
+		if err != nil {
+			return &events.APIGatewayProxyResponse{
+				StatusCode: 500,
+				Body:       fmt.Sprintf("Failed to marshal JSON: %v", err),
+			}, err
+		}
+		return &events.APIGatewayProxyResponse{
+			StatusCode: 200,
+			Body:       string(jsonData),
+		}, nil
 	}
 
-	// For serverless execution, update database
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.MongoDBURI))
 	if err != nil {
 		return &events.APIGatewayProxyResponse{
@@ -87,30 +93,6 @@ func handleRequest(ctx context.Context, config Config) (*events.APIGatewayProxyR
 		StatusCode: 200,
 		Body:       "Successfully updated favorites",
 	}, nil
-}
-
-func handleLocalOutput(movies []Movie, format string) (*events.APIGatewayProxyResponse, error) {
-	switch format {
-	case "json":
-		jsonData, err := json.MarshalIndent(movies, "", "  ")
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal JSON: %v", err)
-		}
-		return &events.APIGatewayProxyResponse{
-			StatusCode: 200,
-			Body:       string(jsonData),
-		}, nil
-	default: // text format
-		var result string
-		for _, movie := range movies {
-			result += fmt.Sprintf("Title: %s (%s)\nURL: %s\nImage: %s\n\n", 
-				movie.Title, movie.Year, movie.MovieURL, movie.ImageURL)
-		}
-		return &events.APIGatewayProxyResponse{
-			StatusCode: 200,
-			Body:       result,
-		}, nil
-	}
 }
 
 func scrapeFavorites(username string) ([]Movie, error) {
@@ -160,23 +142,25 @@ func updateDatabase(ctx context.Context, client *mongo.Client, movies []Movie) e
 }
 
 func main() {
-	// Check if running locally
+	// Define flags but use environment variables as defaults
 	local := flag.Bool("local", false, "Run in local mode")
-	username := flag.String("username", "", "Letterboxd username")
-	mongoURI := flag.String("mongodb-uri", "", "MongoDB connection URI")
-	outputFormat := flag.String("format", "json", "Output format: text or json")
+	username := flag.String("username", os.Getenv("LETTERBOXD_USERNAME"), "Letterboxd username")
+	mongoURI := flag.String("mongodb-uri", os.Getenv("MONGODB_URI"), "MongoDB connection URI")
 	flag.Parse()
 
 	if *local {
 		if *username == "" {
-			log.Fatal("Username is required in local mode")
+			log.Fatal("Letterboxd username is required. Set LETTERBOXD_USERNAME environment variable or use -username flag")
+		}
+
+		if !*local && *mongoURI == "" {
+			log.Fatal("MongoDB URI is required when not in local mode. Set MONGODB_URI environment variable or use -mongodb-uri flag")
 		}
 
 		config := Config{
-			Local:        true,
-			Username:     *username,
-			MongoDBURI:   *mongoURI,
-			OutputFormat: *outputFormat,
+			Local:      true,
+			Username:   *username,
+			MongoDBURI: *mongoURI,
 		}
 
 		response, err := handleRequest(context.Background(), config)

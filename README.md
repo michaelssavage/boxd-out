@@ -25,3 +25,8 @@
 ## Then you can run the compiled program:
 
 `./movie-box -local -username=yourusername`
+
+## Local Testing:
+
+When testing locally with netlify dev, the function will be available at:  
+`http://localhost:8888/api/boxd?username=someusername`

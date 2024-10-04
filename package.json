@@ -1,0 +1,8 @@
+{
+  "name": "boxd",
+  "version": "1.0.0",
+  "description": "Letterboxd favorite movies scraper",
+  "dependencies": {
+    "chrome-aws-lambda": "^10.1.0"
+  }
+}

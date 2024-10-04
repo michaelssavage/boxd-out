@@ -1,9 +1,8 @@
 [build]
-  command = "go build -o functions/scraper"
   functions = "functions"
 
 [functions]
-  external_node_modules = ["mongodb"]
+  external_node_modules = ["chrome-aws-lambda"]
 
 [[redirects]]
   from = "/api/*"
