@@ -8,9 +8,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/chromedp/chromedp"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -50,6 +53,12 @@ func startServer(config Config) error {
 
 func createHandler(config Config) http.Handler {
 	mux := http.NewServeMux()
+
+	// GET / - returns a simple status message
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("boxd is running"))
+	})
 
 	// GET /favourites - returns scraped favorites
 	mux.HandleFunc("GET /favourites", func(w http.ResponseWriter, r *http.Request) {
@@ -104,29 +113,53 @@ func createHandler(config Config) http.Handler {
 
 func scrapeFavorites(username string) ([]Movie, error) {
 	url := fmt.Sprintf("https://letterboxd.com/%s/", username)
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	// Set up a context with a timeout
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+			chromedp.Headless, // Run Chrome in headless mode
+			chromedp.DisableGPU, // Disable GPU usage for headless mode
+			chromedp.NoSandbox, // Optionally disable sandbox for certain environments
+	)
+	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	// Set up a timeout to prevent hanging forever
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	var htmlContent string
+
+	// Navigate to the page and wait for it to fully render
+	err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			chromedp.WaitVisible(`#favourites`), // Wait for the favorites section to appear
+			chromedp.OuterHTML("html", &htmlContent), // Capture the page's HTML content
+	)
 	if err != nil {
-		return nil, err
+			return nil, fmt.Errorf("failed to load page: %v", err)
+	}
+
+	// Now use goquery to scrape from the rendered HTML content
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlContent))
+	if err != nil {
+			return nil, fmt.Errorf("failed to parse HTML: %v", err)
 	}
 
 	var movies []Movie
 	doc.Find("#favourites .poster-container").Each(func(i int, s *goquery.Selection) {
-		poster := s.Find(".film-poster")
-		
-		movie := Movie{
-			Title:     poster.AttrOr("data-film-name", ""),
-			Year:      poster.AttrOr("data-film-release-year", ""),
-			ImageURL:  poster.Find("img").AttrOr("src", ""),
-			MovieURL:  "https://letterboxd.com" + poster.AttrOr("data-film-link", ""),
-			UpdatedAt: time.Now(),
-		}
-		movies = append(movies, movie)
+			poster := s.Find(".film-poster")
+
+			movie := Movie{
+					Title:     poster.AttrOr("data-film-name", ""),
+					Year:      poster.AttrOr("data-film-release-year", ""),
+					ImageURL:  poster.Find("img").AttrOr("src", ""),
+					MovieURL:  "https://letterboxd.com" + poster.AttrOr("data-film-link", ""),
+					UpdatedAt: time.Now(),
+			}
+			movies = append(movies, movie)
 	})
 
 	return movies, nil
@@ -149,6 +182,10 @@ func updateDatabase(ctx context.Context, client *mongo.Client, movies []Movie) e
 }
 
 func main() {
+	err := godotenv.Load()
+    if err != nil {
+        log.Fatal("Error loading .env file")
+    }
 	username := flag.String("username", os.Getenv("LETTERBOXD_USERNAME"), "Letterboxd username")
 	mongoURI := flag.String("mongodb-uri", os.Getenv("MONGODB_URI"), "MongoDB connection URI")
 	flag.Parse()
