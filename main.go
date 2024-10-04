@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -34,65 +32,74 @@ type FavoriteMovies struct {
 
 // Configuration struct to hold runtime settings
 type Config struct {
-	Local      bool
 	Username   string
 	MongoDBURI string
 }
 
-func handler(ctx context.Context, request events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
-	config := Config{
-		Local:      false,
-		MongoDBURI: os.Getenv("MONGODB_URI"),
-		Username:   os.Getenv("LETTERBOXD_USERNAME"),
+func startServer(config Config) error {
+	handler := createHandler(config)
+	
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 	
-	return handleRequest(ctx, config)
+	log.Printf("Starting HTTP server on :%s", port)
+	return http.ListenAndServe(":"+port, handler)
 }
 
-func handleRequest(ctx context.Context, config Config) (*events.APIGatewayProxyResponse, error) {
-	movies, err := scrapeFavorites(config.Username)
-	if err != nil {
-		return &events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       fmt.Sprintf("Failed to scrape favorites: %v", err),
-		}, err
-	}
+func createHandler(config Config) http.Handler {
+	mux := http.NewServeMux()
 
-	if config.Local {
-		jsonData, err := json.MarshalIndent(movies, "", "  ")
+	// GET /favourites - returns scraped favorites
+	mux.HandleFunc("GET /favourites", func(w http.ResponseWriter, r *http.Request) {
+		movies, err := scrapeFavorites(config.Username)
 		if err != nil {
-			return &events.APIGatewayProxyResponse{
-				StatusCode: 500,
-				Body:       fmt.Sprintf("Failed to marshal JSON: %v", err),
-			}, err
+			http.Error(w, fmt.Sprintf("Failed to scrape favorites: %v", err), http.StatusInternalServerError)
+			return
 		}
-		return &events.APIGatewayProxyResponse{
-			StatusCode: 200,
-			Body:       string(jsonData),
-		}, nil
-	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.MongoDBURI))
-	if err != nil {
-		return &events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       "Failed to connect to database",
-		}, err
-	}
-	defer client.Disconnect(ctx)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(movies)
+	})
 
-	err = updateDatabase(ctx, client, movies)
-	if err != nil {
-		return &events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       "Failed to update database",
-		}, err
-	}
+	// POST /favourites - scrapes and saves to MongoDB
+	mux.HandleFunc("POST /favourites", func(w http.ResponseWriter, r *http.Request) {
+		if config.MongoDBURI == "" {
+			http.Error(w, "MongoDB URI not configured", http.StatusInternalServerError)
+			return
+		}
 
-	return &events.APIGatewayProxyResponse{
-		StatusCode: 200,
-		Body:       "Successfully updated favorites",
-	}, nil
+		movies, err := scrapeFavorites(config.Username)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to scrape favorites: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		client, err := mongo.Connect(r.Context(), options.Client().ApplyURI(config.MongoDBURI))
+		if err != nil {
+			http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+			return
+		}
+		defer client.Disconnect(r.Context())
+
+		err = updateDatabase(r.Context(), client, movies)
+		if err != nil {
+			http.Error(w, "Failed to update database", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Successfully saved favorites to database",
+			"count":   fmt.Sprintf("%d", len(movies)),
+		})
+	})
+
+	return mux
 }
 
 func scrapeFavorites(username string) ([]Movie, error) {
@@ -142,33 +149,18 @@ func updateDatabase(ctx context.Context, client *mongo.Client, movies []Movie) e
 }
 
 func main() {
-	// Define flags but use environment variables as defaults
-	local := flag.Bool("local", false, "Run in local mode")
 	username := flag.String("username", os.Getenv("LETTERBOXD_USERNAME"), "Letterboxd username")
 	mongoURI := flag.String("mongodb-uri", os.Getenv("MONGODB_URI"), "MongoDB connection URI")
 	flag.Parse()
 
-	if *local {
-		if *username == "" {
-			log.Fatal("Letterboxd username is required. Set LETTERBOXD_USERNAME environment variable or use -username flag")
-		}
-
-		if !*local && *mongoURI == "" {
-			log.Fatal("MongoDB URI is required when not in local mode. Set MONGODB_URI environment variable or use -mongodb-uri flag")
-		}
-
-		config := Config{
-			Local:      true,
-			Username:   *username,
-			MongoDBURI: *mongoURI,
-		}
-
-		response, err := handleRequest(context.Background(), config)
-		if err != nil {
-			log.Fatalf("Error: %v", err)
-		}
-		fmt.Println(response.Body)
-	} else {
-		lambda.Start(handler)
+	if *username == "" {
+		log.Fatal("Letterboxd username is required. Set LETTERBOXD_USERNAME environment variable or use -username flag")
 	}
+
+	config := Config{
+		Username:   *username,
+		MongoDBURI: *mongoURI,
+	}
+
+	log.Fatal(startServer(config))
 }
