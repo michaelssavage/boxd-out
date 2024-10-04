@@ -1,10 +1,10 @@
 @echo off
 echo Building the program...
-go build -o boxd.exe
+go build -o main.exe
 
 echo.
 echo Testing json output:
-boxd.exe -local -username=ottobio
+main.exe -local -username=ottobio
 
 echo.
 echo ----------------------------------------
