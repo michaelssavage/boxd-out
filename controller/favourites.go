@@ -11,7 +11,6 @@ import (
 	"boxd/utils"
 
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func ScrapeFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) {
@@ -23,16 +22,15 @@ func ScrapeFavourites(w http.ResponseWriter, r *http.Request, config utils.Confi
 	json.NewEncoder(w).Encode(movies)
 }
 
-func GetFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) ([]models.Movie, error) {
+func GetFavourites(
+	w http.ResponseWriter, 
+	r *http.Request, 
+	config utils.Config,
+	client *mongo.Client) ([]models.Movie, error) {
+
 	if config.MongoDBURI == "" {
 		return nil, fmt.Errorf("MongoDB URI not configured")
 	}
-
-	client, err := mongo.Connect(r.Context(), options.Client().ApplyURI(config.MongoDBURI))
-	if err != nil {
-			return nil, fmt.Errorf("failed to connect to database: %v", err)
-	}
-	defer client.Disconnect(r.Context())
 
 	movies, err := repository.GetFavourites(r.Context(), client)
     if err != nil {
@@ -49,7 +47,12 @@ func GetFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) 
 	return movies, err
 }
 
-func SaveFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) {
+func SaveFavourites(
+	w http.ResponseWriter, 
+	r *http.Request, 
+	config utils.Config,
+	client *mongo.Client) {
+
 	if config.MongoDBURI == "" {
 		http.Error(w, "MongoDB URI not configured", http.StatusInternalServerError)
 		return
@@ -60,13 +63,6 @@ func SaveFavourites(w http.ResponseWriter, r *http.Request, config utils.Config)
 		http.Error(w, fmt.Sprintf("Failed to scrape favorites: %v", err), http.StatusInternalServerError)
 		return
 	}
-
-	client, err := mongo.Connect(r.Context(), options.Client().ApplyURI(config.MongoDBURI))
-		if err != nil {
-			http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
-			return
-		}
-		defer client.Disconnect(r.Context())
 
 	err = repository.SaveFavourites(r.Context(), client, movies)
 	if err != nil {
