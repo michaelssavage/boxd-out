@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"boxd/models"
 	"boxd/repository"
 	"boxd/service"
 	"boxd/utils"
@@ -13,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetFavorites(w http.ResponseWriter, r *http.Request, config utils.Config) {
+func ScrapeFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) {
 	movies, err := service.ScrapeFavourites(config.Username)
 	if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -22,7 +23,33 @@ func GetFavorites(w http.ResponseWriter, r *http.Request, config utils.Config) {
 	json.NewEncoder(w).Encode(movies)
 }
 
-func SaveFavorites(w http.ResponseWriter, r *http.Request, config utils.Config) {
+func GetFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) ([]models.Movie, error) {
+	if config.MongoDBURI == "" {
+		return nil, fmt.Errorf("MongoDB URI not configured")
+	}
+
+	client, err := mongo.Connect(r.Context(), options.Client().ApplyURI(config.MongoDBURI))
+	if err != nil {
+			return nil, fmt.Errorf("failed to connect to database: %v", err)
+	}
+	defer client.Disconnect(r.Context())
+
+	movies, err := repository.GetFavourites(r.Context(), client)
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            return []models.Movie{}, fmt.Errorf("failed to get documents")
+        }
+        return []models.Movie{}, fmt.Errorf("failed to get favorites")
+    }
+
+    if err := json.NewEncoder(w).Encode(movies); err != nil {
+        return []models.Movie{}, fmt.Errorf("failed to encode response")
+    }
+
+	return movies, err
+}
+
+func SaveFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) {
 	if config.MongoDBURI == "" {
 		http.Error(w, "MongoDB URI not configured", http.StatusInternalServerError)
 		return
@@ -41,7 +68,7 @@ func SaveFavorites(w http.ResponseWriter, r *http.Request, config utils.Config) 
 		}
 		defer client.Disconnect(r.Context())
 
-	err = repository.UpdateDatabase(r.Context(), client, movies)
+	err = repository.SaveFavourites(r.Context(), client, movies)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

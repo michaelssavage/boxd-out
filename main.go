@@ -16,13 +16,17 @@ func startServer(config utils.Config) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", controller.CheckHealth)
+	
+	mux.HandleFunc("/scrape", func(w http.ResponseWriter, r *http.Request) {
+		controller.ScrapeFavourites(w, r, config)
+	})
 
 	mux.HandleFunc("/favourites", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			controller.GetFavorites(w, r, config)
+			controller.GetFavourites(w, r, config)
 		case http.MethodPost:
-			controller.SaveFavorites(w, r, config)
+			controller.SaveFavourites(w, r, config)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
