@@ -31,23 +31,23 @@ func startServer(config utils.Config) error {
 	)
 	
 	mux.HandleFunc("/scrape",
-			middleware.Authenticate(func(w http.ResponseWriter, r *http.Request) {
-					controller.ScrapeFavourites(w, r, config)
-			}),
-	)
+        middleware.Authenticate(func(w http.ResponseWriter, r *http.Request) {
+            controller.ScrapeFavourites(w, r, config)
+        }, config),
+    )
 
-	mux.HandleFunc("/favourites",
-			middleware.Authenticate(func(w http.ResponseWriter, r *http.Request) {
-					switch r.Method {
-					case http.MethodGet:
-							controller.GetFavourites(w, r, config, client)
-					case http.MethodPost:
-							controller.SaveFavourites(w, r, config, client)
-					default:
-							http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-					}
-			}),
-	)
+		mux.HandleFunc("/favourites",
+		middleware.Authenticate(func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodGet:
+						controller.GetFavourites(w, r, config, client)
+				case http.MethodPost:
+						controller.SaveFavourites(w, r, config, client)
+				default:
+						http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				}
+		}, config),
+)
 	
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -63,6 +63,7 @@ func main() {
     if err != nil {
         log.Fatal("Error loading .env file")
     }
+
 	username := flag.String("username", os.Getenv("LETTERBOXD_USERNAME"), "Letterboxd username")
 	mongoURI := flag.String("mongodb-uri", os.Getenv("MONGODB_URI"), "MongoDB connection URI")
 	flag.Parse()

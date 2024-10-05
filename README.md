@@ -1,6 +1,6 @@
 # movie-box
 
-A Go REST API that scrapes your Letterboxd favorites and provides endpoints to fetch and store the data.
+A Go REST API for scraping my Letterboxd favorites and provides endpoints to fetch and store the data. JWT token is generated using a secret word and username flag.
 
 ## Setup
 
@@ -17,14 +17,16 @@ go mod tidy
 ### Prerequisites
 
 - Go 1.16 or later
-- MongoDB instance (optional, only needed for POST endpoint)
+- MongoDB instance
 
 ### Environment Variables
 
-You can set these environment variables or override them with command-line flags:
+Letterboxd username and monogdb can be set via a flag when starting the server.
 
-- `LETTERBOXD_USERNAME`: Your Letterboxd username (required)
+- `LETTERBOXD_USERNAME`: Letterboxd username
 - `MONGODB_URI`: MongoDB connection string (required for POST endpoint)
+- `JWT_SECRET`: jwt token used to authenticate requests against
+- `AUTH_SECRET_WORD`: for validating a jwt token generation.
 - `PORT`: Server port (defaults to 8080)
 
 ### Command-line Flags
@@ -46,7 +48,7 @@ go run main.go
 
 ### GET /favourites
 
-Returns a JSON array of your Letterboxd favorite movies.
+Returns a JSON array of Letterboxd favorite movies.
 
 Example response:
 
@@ -64,7 +66,7 @@ Example response:
 
 ### POST /favourites
 
-Scrapes your Letterboxd favorites and saves them to MongoDB.
+Scrapes Letterboxd favorites and saves them to MongoDB.
 
 Example response:
 
@@ -76,3 +78,37 @@ Example response:
 ```
 
 Both endpoints have CORS enabled, allowing requests from any origin.
+
+## Authentication
+
+All endpoints (except the health check endpoint /) require authentication using a Bearer token.
+
+Include the token in the Authorization header for all requests. Example Requests:
+
+```bash
+# Get favorites
+curl -X GET http://localhost:8080/favourites \
+  -H "Authorization: Bearer your_token_here"
+
+# Scrape and save favorites
+curl -X POST http://localhost:8080/favourites \
+  -H "Authorization: Bearer your_token_here"
+```
+
+Error Responses
+
+Missing token:
+
+```json
+{
+  "error": "Authorization header required"
+}
+```
+
+Invalid token:
+
+```json
+{
+  "error": "Invalid token"
+}
+```
