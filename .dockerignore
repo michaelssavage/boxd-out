@@ -1,0 +1,6 @@
+# flyctl launch added from .gitignore
+**\.env
+**\*.exe
+# Local Netlify folder
+**\.netlify
+fly.toml
