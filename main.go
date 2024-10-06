@@ -59,10 +59,7 @@ func startServer(config utils.Config) error {
 }
 
 func main() {
-	err := godotenv.Load()
-    if err != nil {
-        log.Fatal("Error loading .env file")
-    }
+	godotenv.Load()
 
 	username := flag.String("username", os.Getenv("LETTERBOXD_USERNAME"), "Letterboxd username")
 	mongoURI := flag.String("mongodb-uri", os.Getenv("MONGODB_URI"), "MongoDB connection URI")
