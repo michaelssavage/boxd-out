@@ -1,4 +1,4 @@
-# movie-box
+# BOXD
 
 A Go REST API for scraping my Letterboxd favorites and provides endpoints to fetch and store the data. JWT token is generated using a secret word and username flag.
 
