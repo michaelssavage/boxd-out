@@ -1,80 +1,75 @@
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"boxd/models"
 	"boxd/repository"
 	"boxd/service"
 	"boxd/utils"
 
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func ScrapeFavourites(w http.ResponseWriter, r *http.Request, config utils.Config) {
-	movies, err := service.ScrapeFavourites(config.Username)
-	if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+func ScrapeFavourites(config utils.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		movies, err := service.ScrapeFavourites(config.Username)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
+		}
+		c.JSON(http.StatusOK, movies)
 	}
-	json.NewEncoder(w).Encode(movies)
 }
 
-func GetFavourites(
-	w http.ResponseWriter, 
-	r *http.Request, 
-	config utils.Config,
-	client *mongo.Client) ([]models.Movie, error) {
+func GetFavourites(config utils.Config, client *mongo.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if config.MongoDBURI == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "MongoDB URI not configured"})
+			return
+		}
 
-	if config.MongoDBURI == "" {
-		return nil, fmt.Errorf("MongoDB URI not configured")
+		movies, err := repository.GetFavourites(c.Request.Context(), client)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				c.JSON(http.StatusNotFound, gin.H{"error": "No favorites found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get favorites"})
+			return
+		}
+
+		c.JSON(http.StatusOK, movies)
 	}
-
-	movies, err := repository.GetFavourites(r.Context(), client)
-    if err != nil {
-        if err == mongo.ErrNoDocuments {
-            return []models.Movie{}, fmt.Errorf("failed to get documents")
-        }
-        return []models.Movie{}, fmt.Errorf("failed to get favorites")
-    }
-
-    if err := json.NewEncoder(w).Encode(movies); err != nil {
-        return []models.Movie{}, fmt.Errorf("failed to encode response")
-    }
-
-	return movies, err
 }
 
-func SaveFavourites(
-	w http.ResponseWriter, 
-	r *http.Request, 
-	config utils.Config,
-	client *mongo.Client) {
+func SaveFavourites(config utils.Config, client *mongo.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if config.MongoDBURI == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "MongoDB URI not configured"})
+			return
+		}
 
-	if config.MongoDBURI == "" {
-		http.Error(w, "MongoDB URI not configured", http.StatusInternalServerError)
-		return
-	}
+		imageService := service.NewImageService(2000, 3000)
+		movies, err := service.ScrapeFavourites(config.Username)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to scrape favorites: %v", err)})
+			return
+		}
 
-	movies, err := service.ScrapeFavourites(config.Username)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to scrape favorites: %v", err), http.StatusInternalServerError)
-		return
-	}
+		// Update image URLs before saving
+		movies = imageService.UpdateMovieImageURLs(movies)
+		err = repository.SaveFavourites(c.Request.Context(), client, movies)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 
-	err = repository.SaveFavourites(r.Context(), client, movies)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.JSON(http.StatusCreated, gin.H{
 			"message": "Successfully saved favorites to database",
-			"count":   fmt.Sprintf("%d", len(movies)),
+			"count":   len(movies),
 		})
+	}
 }

@@ -2,10 +2,12 @@ package controller
 
 import (
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-func CheckHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "boxd is running"}`))
+func CheckHealth(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "boxd is running",
+	})
 }

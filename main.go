@@ -4,58 +4,44 @@ import (
 	"context"
 	"flag"
 	"log"
-	"net/http"
 	"os"
 
 	"boxd/controller"
 	"boxd/middleware"
 	"boxd/utils"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func startServer(config utils.Config) error {
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.MongoDBURI))
-    if err != nil {
-        return err
-    }
-    defer client.Disconnect(context.Background())
+	if err != nil {
+		return err
+	}
+	defer client.Disconnect(context.Background())
 
-	mux := http.NewServeMux()
+	router := gin.Default()
 
-	mux.HandleFunc("/", 
-		controller.CheckHealth,
-	)
-	
-	mux.HandleFunc("/scrape",
-        middleware.Authenticate(func(w http.ResponseWriter, r *http.Request) {
-            controller.ScrapeFavourites(w, r, config)
-        }, config),
-    )
+	router.GET("/", controller.CheckHealth)
 
-		mux.HandleFunc("/favourites",
-		middleware.Authenticate(func(w http.ResponseWriter, r *http.Request) {
-				switch r.Method {
-				case http.MethodGet:
-						controller.GetFavourites(w, r, config, client)
-				case http.MethodPost:
-						controller.SaveFavourites(w, r, config, client)
-				default:
-						http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-				}
-		}, config),
-)
-	
+	authorized := router.Group("/")
+	authorized.Use(middleware.Authenticate(config))
+	{
+		authorized.GET("/scrape", controller.ScrapeFavourites(config))
+    authorized.GET("/favourites", controller.GetFavourites(config, client))
+    authorized.POST("/favourites", controller.SaveFavourites(config, client))
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	
+
 	log.Printf("Starting HTTP server on :%s", port)
-	return http.ListenAndServe(":"+port, mux)
+	return router.Run(":" + port)
 }
 
 func main() {
