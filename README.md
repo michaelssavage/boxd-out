@@ -2,6 +2,8 @@
 
 A Go REST API for scraping and fetching my Letterboxd favorites, storing the data to MongoDB. JWT token is generated using a secret word and username flag.
 
+[GO API blog write-up](https://michaelsavage.ie/blog/rest-api-with-go)
+
 ## Setup
 
 ```bash
