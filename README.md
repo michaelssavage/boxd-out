@@ -7,38 +7,34 @@ A Go REST API for scraping and fetching my Letterboxd favorites, storing the dat
 ## Setup
 
 ```bash
-# Initialize Go module
-go mod init boxd
+# Initialize Go module if not done already
+1. go mod init boxd
 
 # Install dependencies
-go mod tidy
+2. go mod tidy
 ```
+
+`3. add .env file`  
+- LETTERBOXD_USERNAME: Letterboxd username
+- MONGODB_URI: MongoDB connection string (required for POST endpoint)
+- JWT_SECRET: jwt token used to authenticate requests against
+- AUTH_SECRET_WORD: for validating a jwt token generation.
+- PORT: Server port (defaults to 8080)
+
+
+`4. run the server`  
+- go run main.go
 
 ## Running the Server
 
-### Prerequisites
-
-- Go 1.16 or later
-- MongoDB instance
-
-### Environment Variables
+### Command-line Flags
 
 Letterboxd username and monogdb can be set via a flag when starting the server.
-
-- `LETTERBOXD_USERNAME`: Letterboxd username
-- `MONGODB_URI`: MongoDB connection string (required for POST endpoint)
-- `JWT_SECRET`: jwt token used to authenticate requests against
-- `AUTH_SECRET_WORD`: for validating a jwt token generation.
-- `PORT`: Server port (defaults to 8080)
-
-### Command-line Flags
 
 - `-username`: Override the Letterboxd username
 - `-mongodb-uri`: Override the MongoDB connection URI
 
-### Example
-
-Start the server:
+Example starting the server:
 
 ```bash
 export LETTERBOXD_USERNAME=yourusername
@@ -48,11 +44,9 @@ go run main.go
 
 ## API Endpoints
 
-### GET /favourites
-
-Returns a JSON array of Letterboxd favorite movies.
-
-Example response:
+`GET /favourites`  
+- Returns a JSON array of Letterboxd favorite movies.
+- Example response:
 
 ```json
 [
@@ -66,11 +60,9 @@ Example response:
 ]
 ```
 
-### POST /favourites
-
-Scrapes Letterboxd favorites and saves them to MongoDB.
-
-Example response:
+`POST /favourites`  
+- Scrapes Letterboxd favorites and saves them to MongoDB.
+- Example response:
 
 ```json
 {
@@ -78,8 +70,6 @@ Example response:
   "count": "4"
 }
 ```
-
-Both endpoints have CORS enabled, allowing requests from any origin.
 
 ## Authentication
 

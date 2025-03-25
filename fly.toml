@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for boxd on 2024-10-06T15:38:16+02:00
+# fly.toml app configuration file generated for movie-box on 2025-03-25T23:47:25+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'boxd'
+app = 'movie-box'
 primary_region = 'mad'
 
 [build]
