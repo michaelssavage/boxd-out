@@ -14,6 +14,14 @@
 `uv run manage.py runserver`
 - run development server
 
+## Management commands 
+
+`uv run manage.py generate_key`
+- generate a new secret key
+
+`uv run manage.py generate_token --username myusername --secret-word mysecret`
+- generate a new token
+
 ## DB updates
 
 `uv run manage.py makemigrations`
@@ -21,7 +29,3 @@
 
 `uv run manage.py migrate`
 - apply migrations to remote db (kinda like git push)
-
-`uv run manage.py generate_token --username myusername --secret-word mysecret`
-- generate a new token
-

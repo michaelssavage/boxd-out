@@ -1,4 +1,4 @@
-.env
+.env*
 *.exe
 .netlify
 *__pycache__

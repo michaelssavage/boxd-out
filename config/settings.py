@@ -9,6 +9,7 @@ JWT_SECRET = config('JWT_SECRET', default=None)
 AUTH_SECRET_WORD = config('AUTH_SECRET_WORD', default=None)
 LETTERBOXD_USERNAME = config('LETTERBOXD_USERNAME', default=None)
 DEBUG = config('DEBUG', default=True, cast=bool)
+WSGI_APPLICATION = 'config.wsgi.application'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*.fly.dev']
 
@@ -58,3 +59,8 @@ DATABASES = {
         conn_health_checks=True,
     )
 }
+
+SECURE_HSTS_SECONDS = 30 * 24 * 60 * 60  # 30 days
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True     # Protect subdomains
+SECURE_HSTS_PRELOAD = True                # Submit to HSTS preload list
+SECURE_SSL_REDIRECT = True  # Redirect HTTP → HTTPS
