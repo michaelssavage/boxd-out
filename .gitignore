@@ -1,4 +1,6 @@
 .env
 *.exe
-# Local Netlify folder
 .netlify
+*__pycache__
+*.pyc
+.venv/

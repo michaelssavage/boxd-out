@@ -1,7 +1,29 @@
 [project]
-name = "movie-box"
+name = "boxd-out"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "dj-database-url>=2.1.0",
+    "django>=5.2.4",
+    "lxml>=6.0.0",
+    "psycopg2-binary>=2.9.0",
+    "pyjwt>=2.10.1",
+    "pymongo>=4.13.2",
+    "python-decouple>=3.8",
+    "requests>=2.32.4",
+    "selenium>=4.34.2",
+    "webdriver-manager>=4.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+]
+
+[tool.ruff]
+select = ["E", "F", "DJ"]
+extend-select = ["I"]
+line-length = 110
