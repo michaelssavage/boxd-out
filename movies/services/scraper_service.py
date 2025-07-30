@@ -1,3 +1,4 @@
+import re
 import time
 from typing import Any, Dict, List
 
@@ -125,26 +126,29 @@ class LetterboxdScraper:
         title = poster.get('data-film-name', '').strip()
         year = poster.get('data-film-release-year', '').strip()
         
+        # Ensure we have required data
+        if not title:
+            print("Warning: Movie missing title, skipping")
+            return None
+        
+        if not year:
+            frame_title = container.select_one(".frame-title")
+            if frame_title:
+                year_match = re.search(r'\((\d{4})\)$', frame_title.get_text().strip())
+                year = year_match.group(1) if year_match else ''
+                
+        
         img_tag = poster.select_one('img')
         image_url = img_tag.get('src', '').strip() if img_tag else ''
         
         film_link = poster.get('data-film-link', '').strip()
         link_url = f"https://letterboxd.com{film_link}" if film_link else ''
         
-        # Ensure we have required data
-        if not title:
-            print("Warning: Movie missing title, skipping")
-            return None
-        
-        # Year can be empty for some movies, but we need a string
-        if not year:
-            year = ''
-        
         return {
             'title': title,
             'year': year,
             'image_url': image_url,
-            'link_url': link_url,  # Changed from movie_url to match Django model
+            'link_url': link_url, 
         }
 
 

@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timedelta
 
 import jwt
@@ -20,9 +19,9 @@ def generate_token(username: str, secret_word: str) -> str:
         ValueError: If credentials are invalid
     """
     # Get expected values from environment/settings
-    expected_secret_word = getattr(settings, 'AUTH_SECRET_WORD', None) or os.getenv('AUTH_SECRET_WORD')
-    expected_username = getattr(settings, 'LETTERBOXD_USERNAME', None) or os.getenv('LETTERBOXD_USERNAME')
-    jwt_secret = getattr(settings, 'JWT_SECRET', None) or os.getenv('JWT_SECRET')
+    expected_secret_word = getattr(settings, 'AUTH_SECRET_WORD', None)
+    expected_username = getattr(settings, 'LETTERBOXD_USERNAME', None)
+    jwt_secret = getattr(settings, 'JWT_SECRET', None)
     
     if not expected_secret_word:
         raise ValueError("AUTH_SECRET_WORD not configured")
@@ -61,7 +60,7 @@ def validate_token(token_string: str, username: str) -> bool:
         bool: True if token is valid, False otherwise
     """
     try:
-        jwt_secret = getattr(settings, 'JWT_SECRET', None) or os.getenv('JWT_SECRET')
+        jwt_secret = getattr(settings, 'JWT_SECRET', None)
         if not jwt_secret:
             return False
         

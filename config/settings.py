@@ -4,9 +4,10 @@ import dj_database_url
 from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-SECRET_KEY = config('SECRET_KEY', default='your-secret-key-here')
-
+SECRET_KEY = config('SECRET_KEY', default=None)
+JWT_SECRET = config('JWT_SECRET', default=None)
+AUTH_SECRET_WORD = config('AUTH_SECRET_WORD', default=None)
+LETTERBOXD_USERNAME = config('LETTERBOXD_USERNAME', default=None)
 DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*.fly.dev']
@@ -18,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'movies',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [

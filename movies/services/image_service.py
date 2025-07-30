@@ -126,40 +126,6 @@ class ImageOptimizer:
                 current_height == self.default_height)
 
 
-# Factory function for easy instantiation (equivalent to Go's NewImageService)
-def create_image_optimizer(width: int = 2000, height: int = 3000) -> ImageOptimizer:
-    """
-    Factory function to create ImageService instance
-    
-    Args:
-        width: Image width
-        height: Image height
-        
-    Returns:
-        ImageService instance
-    """
-    return ImageOptimizer(width, height)
-
-
-# Utility functions for common operations
-def optimize_movie_images(movies: List[Dict[str, Any]], 
-                         width: int = 2000, 
-                         height: int = 3000) -> List[Dict[str, Any]]:
-    """
-    Convenience function to optimize movie image URLs
-    
-    Args:
-        movies: List of movie dictionaries
-        width: Target image width
-        height: Target image height
-        
-    Returns:
-        Movies with optimized image URLs
-    """
-    service = ImageOptimizer(width, height)
-    return service.update_movie_image_urls(movies)
-
-
 def optimize_single_url(url: str, width: int = 2000, height: int = 3000) -> str:
     """
     Convenience function to optimize a single image URL
