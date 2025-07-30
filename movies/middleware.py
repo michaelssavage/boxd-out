@@ -19,6 +19,7 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
         # Skip authentication for certain paths
         skip_paths = [
             '/api/health/',
+            '/api/health',
             '/admin/',
         ]
         
