@@ -11,6 +11,7 @@ urlpatterns = [
     path('scrape/favourites/save/', views.save_favourites, name='save_favourites'),
     
     # Movie endpoints
+    path('movies/save-new/', views.save_new_movie, name='save_new_movie'),
     path('movies/', views.get_all_movies, name='get_all_movies'),
     path('movies/favourites/', views.get_favourites, name='get_favourites'),
     path('movies/saved/', views.get_saved_movies, name='get_saved_movies'),

@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .repository import MovieRepository
-from .services import ImageOptimizer, LetterboxdScraper
+from .services import ImageOptimizer, LetterboxdScraper, SingleMovieScraper
 
 
 @api_view(["GET"])
@@ -71,6 +71,102 @@ def get_favourites(request):
             'details': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@api_view(["POST"])
+def save_new_movie(request):
+    """
+    Save a movie to favourites by scraping from Letterboxd
+    
+    Expected POST body:
+    {
+        "movie_title": "bring-her-back",
+        "status": "FAVORITE"  # or "SAVED"
+    }
+    """
+    try:
+        # Check if username is configured
+        username = getattr(settings, 'LETTERBOXD_USERNAME', None)
+        if not username:
+            return Response(
+                {'error': 'Letterboxd username not configured'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Validate request data
+        movie_title = request.data.get('movie_title')
+        movie_status = request.data.get('status')
+        
+        if not movie_title:
+            return Response(
+                {"error": "movie_title is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not movie_status:
+            movie_status = "SAVED"
+        
+        scraper = SingleMovieScraper()
+        try:
+            movie_data = scraper.scrape_movie(movie_title)
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to scrape movie: {str(e)}"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Validate that we have the minimum required data
+        if not movie_data.get('title') or not movie_data.get('year'):
+            return Response(
+                {"error": "Failed to extract required movie data (title and year)"}, 
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+        
+        # Save using repository
+        movie = MovieRepository.save_movie(
+            title=movie_data['title'],
+            year=movie_data['year'],
+            image_url=movie_data['image_url'],
+            link_url=movie_data['link_url'],
+            status=movie_status
+        )
+        
+        if not movie:
+            return Response(
+                {"error": "Failed to save movie to database"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Determine if this was a creation or update
+        # Since save_movie uses update_or_create, we can check if it was just created
+        # by comparing timestamps (within a few seconds)
+        import datetime
+
+        from django.utils import timezone
+        created = (timezone.now() - movie.created_at) < datetime.timedelta(seconds=5)
+        
+        # Prepare response data
+        response_data = {
+            'id': movie.id,
+            'title': movie.title,
+            'year': movie.year,
+            'status': movie.status,
+            'image_url': movie.image_url,
+            'link_url': movie.link_url,
+            'created_at': movie.created_at,
+            'updated_at': movie.updated_at,
+            'created': created,  # True if new record, False if updated
+        }
+        
+        return Response(
+            response_data, 
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        return Response(
+            {"error": f"Internal server error: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(["POST"])
 @csrf_exempt
