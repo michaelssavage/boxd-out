@@ -1,5 +1,8 @@
 # Boxd Out
 
+A Django REST Framework app to scrape movies from Letterboxd and save them to a PostgreSQL database.  
+Initially built with Go in March 2025, I moved to Python to take advantage of the Django ecosystem as my new job role would use this stack. I previously wrote about it here [Rest API with Go](https://michaelsavage.ie/blog/rest-api-with-go).
+
 ## Commands
 
 `uv sync`
