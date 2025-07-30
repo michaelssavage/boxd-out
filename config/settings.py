@@ -11,7 +11,7 @@ LETTERBOXD_USERNAME = config('LETTERBOXD_USERNAME', default=None)
 DEBUG = config('DEBUG', default=True, cast=bool)
 WSGI_APPLICATION = 'config.wsgi.application'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*.fly.dev']
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -64,3 +64,5 @@ SECURE_HSTS_SECONDS = 30 * 24 * 60 * 60  # 30 days
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True     # Protect subdomains
 SECURE_HSTS_PRELOAD = True                # Submit to HSTS preload list
 SECURE_SSL_REDIRECT = True  # Redirect HTTP → HTTPS
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
